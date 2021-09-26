@@ -1,5 +1,6 @@
 defmodule ExBanking do
 
+  @max_msg_queue 10
   @name :ex_banking
 
   use GenServer
@@ -396,10 +397,9 @@ defmodule ExBanking do
   #   ## Output
   # """
   defp msg_to_user_process(upid, {{pid, ref}=client, msg}) do
-    {_, mlist} = Process.info(upid, :messages)
-    # todo move 10 to config
+    {_, queue_len} = Process.info(upid, :message_queue_len)
 
-    case length(mlist) < 10 do
+    case queue_len < @max_msg_queue do
       :true -> send(upid, {client, msg})
       _ -> send(pid, {ref, {:error, :too_many_requests_to_user}});
     end

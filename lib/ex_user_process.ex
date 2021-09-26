@@ -1,5 +1,7 @@
 defmodule ExUserProcess do
 
+  	@decimals 2
+
 	import ExUser
 
 	@doc """
@@ -26,7 +28,6 @@ defmodule ExUserProcess do
 		receive do
 
 			{{pid, ref}, {:get_balance, currency}} ->
-				# :timer.sleep(10000)
 				balance_list = me.list_balance
 				balance = get_balance(balance_list, currency)
 				send pid, {ref, {:ok, balance}}
@@ -35,7 +36,7 @@ defmodule ExUserProcess do
 			{{pid, ref}, {:deposit, amount, currency}} ->
 				balance_list = me.list_balance
 				balance = get_balance(balance_list, currency)
-				finalbal = balance + amount
+				finalbal = round_balance(balance + amount)
 
 				send pid, {ref, {:ok, finalbal}}
 
@@ -52,7 +53,7 @@ defmodule ExUserProcess do
 						listen_loop(me);
 					_ ->
 						finalbal = balance - amount
-						send pid, {ref, {:ok, finalbal}}
+						send pid, {ref, {:ok, round_balance(finalbal)}}
 						updated_balance_list = deduct_balance(balance_list, amount, currency)
 						listen_loop(%{me|list_balance: updated_balance_list})
 				end
@@ -75,14 +76,22 @@ defmodule ExUserProcess do
 			:nil ->
 				[{atom_currency, amount}|list];
 			previous_amount ->
-				Keyword.put(list, atom_currency, previous_amount + amount)
+				Keyword.put(list, atom_currency, round_balance(previous_amount + amount))
 		end
 	end
 
 	defp deduct_balance(list, amount, currency) do
 		atom_currency = String.to_atom(currency)
 		previous_amount = Keyword.get(list, atom_currency)
-		Keyword.put(list, atom_currency, previous_amount - amount)
+		Keyword.put(list, atom_currency, round_balance(previous_amount - amount))
+	end
+
+	defp round_balance(amt) when is_float(amt) do
+		Float.round(amt, @decimals)
+	end
+
+	defp round_balance(amt) when is_integer(amt) do
+		Float.round(amt * 1.0, @decimals)
 	end
 
 end
